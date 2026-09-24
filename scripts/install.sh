@@ -45,5 +45,5 @@ if [[ "$expected_checksum" != "$actual_checksum" ]]; then
   exit 1
 fi
 
-npm install --global "$archive"
+npm install --global --ignore-scripts "$archive"
 skill-installer --version

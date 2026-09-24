@@ -30,7 +30,7 @@ try {
         throw "Downloaded archive checksum does not match the release checksum."
     }
 
-    npm install --global $archive
+    npm install --global --ignore-scripts $archive
     if ($LASTEXITCODE -ne 0) {
         throw "npm could not install skill-installer."
     }
