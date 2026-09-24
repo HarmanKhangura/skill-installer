@@ -106,4 +106,21 @@ describe("skill-installer utils & installer", () => {
     expect(removeResults.every((r) => r.status === "removed")).toBe(true);
     expect(fs.existsSync(path.join(TEST_DIR, ".agents", "skills", "skill-a"))).toBe(false);
   });
+
+  it("should install skills from a custom source directory override", () => {
+    const customSource = path.join(TEST_DIR, "custom-source");
+    fs.mkdirSync(path.join(customSource, "custom-skill"), { recursive: true });
+    fs.writeFileSync(path.join(customSource, "custom-skill", "SKILL.md"), "# Custom Skill");
+
+    const results = installSkills({
+      scope: "local",
+      targets: ["generic"],
+      sourcePath: customSource,
+      cwd: TEST_DIR,
+    });
+
+    expect(results.length).toBe(1);
+    expect(results[0].skillName).toBe("custom-skill");
+    expect(fs.existsSync(path.join(TEST_DIR, ".agents", "skills", "custom-skill"))).toBe(true);
+  });
 });

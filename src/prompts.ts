@@ -1,4 +1,7 @@
 import * as p from "@clack/prompts";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
 import type { Scope, TargetAgent, SkillItem } from "./types.js";
 
 export async function promptScope(initialScope?: Scope): Promise<Scope> {
@@ -62,3 +65,30 @@ export async function promptSkills(foundSkills: SkillItem[]): Promise<string[]> 
 
   return choices;
 }
+
+export async function promptSourceDirectory(initialSource?: string): Promise<string> {
+  if (initialSource) return initialSource;
+
+  const value = await p.text({
+    message: "Specify source directory containing skills:",
+    placeholder: "./ (current directory)",
+    defaultValue: ".",
+    validate(val) {
+      const pathToCheck = val ? val.trim() : ".";
+      const resolved = pathToCheck.startsWith("~")
+        ? path.join(os.homedir(), pathToCheck.slice(1))
+        : path.resolve(pathToCheck);
+      if (!fs.existsSync(resolved)) {
+        return `Directory "${pathToCheck}" does not exist`;
+      }
+    },
+  });
+
+  if (p.isCancel(value)) {
+    p.cancel("Operation cancelled.");
+    process.exit(0);
+  }
+
+  return value ? value.trim() : ".";
+}
+

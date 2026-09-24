@@ -15,7 +15,8 @@ Works on Linux, macOS, and Windows.
 - 🤖 **Target Selection**:
   - `--generic`: Install into `.agents` folder.
   - `--claude`: Install into `.claude` folder.
-- 💬 **Interactive Mode**: If flags are omitted, presents an interactive questionnaire to guide you through scope and target selections.
+- 💬 **Interactive Mode**: If options are omitted, prompts for installation scope, target agents, and source directory (defaulting to the current working directory).
+- 📂 **Source Directory Override**: Interactively specify or use `--source <path>` (`-s <path>`) to scan any directory for skills.
 - 🪟 **Cross-Platform**: Uses standard Unix symlinks on Linux/macOS and Directory Junctions on Windows (no Administrator privileges required).
 - 🔄 **Force & Unlink Support**: Re-link existing skills with `--force` or remove installed symlinks with `--unlink`.
 

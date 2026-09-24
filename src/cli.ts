@@ -5,7 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { installSkills } from "./installer.js";
 import { findSkills, expandHome } from "./utils.js";
-import { promptScope, promptTargets, promptSkills } from "./prompts.js";
+import { promptScope, promptTargets, promptSkills, promptSourceDirectory } from "./prompts.js";
 import type { Scope, TargetAgent } from "./types.js";
 
 const program = new Command();
@@ -59,7 +59,12 @@ program
       targets.push(...selectedTargets);
     }
 
-    const sourcePath = options.source ? expandHome(options.source) : process.cwd();
+    let sourcePathInput = options.source;
+    if (!sourcePathInput && !nonInteractive) {
+      sourcePathInput = await promptSourceDirectory();
+    }
+
+    const sourcePath = expandHome(sourcePathInput || process.cwd());
     const foundSkills = findSkills(sourcePath);
 
     if (foundSkills.length === 0) {
@@ -69,14 +74,14 @@ program
     }
 
     let selectedSkillNames: string[] = [];
-    if (foundSkills.length > 1 && !nonInteractive && !options.source) {
+    if (foundSkills.length > 1 && !nonInteractive) {
       selectedSkillNames = await promptSkills(foundSkills);
     } else {
       selectedSkillNames = foundSkills.map((s) => s.name);
     }
 
     const actionText = options.unlink ? "Unlinking" : "Installing";
-    p.log.info(`${actionText} ${selectedSkillNames.length} skill(s) into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
+    p.log.info(`${actionText} ${selectedSkillNames.length} skill(s) from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
 
     const results = installSkills({
       scope,
@@ -95,7 +100,6 @@ program
     for (const res of results) {
       const targetLabel = pc.magenta(`[${res.target}]`);
       const skillLabel = pc.bold(res.skillName);
-      const linkPathRelative = path.relative(process.cwd(), res.linkPath) || res.linkPath;
 
       if (res.status === "created" || res.status === "updated" || res.status === "removed") {
         successCount++;
