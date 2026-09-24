@@ -2,7 +2,7 @@ import * as p from "@clack/prompts";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { Scope, TargetAgent, SkillItem } from "./types.js";
+import type { InvalidInstalledSkill, Scope, TargetAgent, SkillItem } from "./types.js";
 
 export async function promptScope(initialScope?: Scope): Promise<Scope> {
   if (initialScope) return initialScope;
@@ -45,20 +45,40 @@ export async function promptTargets(initialTargets?: TargetAgent[]): Promise<Tar
 
 export async function promptSkills(
   foundSkills: SkillItem[],
-  initiallySelected: string[] = []
-): Promise<string[]> {
-  const choices = await p.multiselect<string>({
-    message: "Select skills to install or keep (uncheck installed skills to remove them):",
-    options: foundSkills.map((s) => ({
-      value: s.name,
-      label: s.name,
-      hint: initiallySelected.includes(s.name)
+  initiallySelected: string[] = [],
+  invalidInstalledSkills: InvalidInstalledSkill[] = []
+): Promise<{ selectedSkillNames: string[]; invalidSkillsToRemove: InvalidInstalledSkill[] }> {
+  const skillValues = foundSkills.map((_, index) => `skill-${index}`);
+  const invalidSkillValues = invalidInstalledSkills.map((_, index) => `invalid-${index}`);
+  const initiallySelectedSet = new Set(initiallySelected);
+  const options: Record<string, { value: string; label: string; hint?: string }[]> = {};
+
+  if (foundSkills.length > 0) {
+    options["Available skills"] = foundSkills.map((skill, index) => ({
+      value: skillValues[index],
+      label: skill.name,
+      hint: initiallySelectedSet.has(skill.name)
         ? "installed"
-        : s.hasSkillMd
+        : skill.hasSkillMd
           ? "valid skill (SKILL.md present)"
           : "folder",
-    })),
-    initialValues: initiallySelected,
+    }));
+  }
+
+  if (invalidInstalledSkills.length > 0) {
+    options["Invalid installed skills (select to remove)"] = invalidInstalledSkills.map((skill, index) => ({
+      value: invalidSkillValues[index],
+      label: `${skill.name} (${skill.target === "generic" ? ".agents" : ".claude"})`,
+      hint: "missing SKILL.md or SKILLS.md",
+    }));
+  }
+
+  const choices = await p.groupMultiselect<string>({
+    message: "Select skills to install or keep; select invalid installed skills to remove:",
+    options,
+    initialValues: foundSkills.flatMap((skill, index) =>
+      initiallySelectedSet.has(skill.name) ? [skillValues[index]] : []
+    ),
     required: false,
   });
 
@@ -67,7 +87,14 @@ export async function promptSkills(
     process.exit(0);
   }
 
-  return choices;
+  return {
+    selectedSkillNames: foundSkills.flatMap((skill, index) =>
+      choices.includes(skillValues[index]) ? [skill.name] : []
+    ),
+    invalidSkillsToRemove: invalidInstalledSkills.filter((_, index) =>
+      choices.includes(invalidSkillValues[index])
+    ),
+  };
 }
 
 export async function promptSourceDirectory(initialSource?: string): Promise<string> {

@@ -3,7 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { installSkills, uninstallSkills } from "../src/installer.js";
-import { findInstalledSkillNames, findSkills, getSkillChanges, getTargetDirectory } from "../src/utils.js";
+import {
+  findInstalledSkillNames,
+  findInvalidInstalledSkills,
+  findSkills,
+  getSkillChanges,
+  getTargetDirectory,
+} from "../src/utils.js";
 
 const TEST_DIR = path.join(os.tmpdir(), "skill-installer-tests-" + Date.now());
 const SOURCE_SKILLS_DIR = path.join(TEST_DIR, "my-skills");
@@ -62,6 +68,34 @@ describe("skill-installer utils & installer", () => {
       toInstall: ["skill-c"],
       toUninstall: ["skill-b"],
     });
+  });
+
+  it("should find installed folders without skill markdown files", () => {
+    const targetDir = getTargetDirectory("generic", "local", TEST_DIR);
+    fs.mkdirSync(path.join(targetDir, "legacy-skill"), { recursive: true });
+    fs.writeFileSync(path.join(targetDir, "legacy-skill", "README.md"), "# Legacy");
+
+    expect(findInvalidInstalledSkills(["generic"], "local", TEST_DIR)).toEqual([
+      { name: "legacy-skill", target: "generic" },
+    ]);
+  });
+
+  it("should uninstall explicitly selected items that are not valid source skills", () => {
+    const orphan = path.join(getTargetDirectory("generic", "local", TEST_DIR), "orphan");
+    fs.mkdirSync(orphan, { recursive: true });
+    fs.writeFileSync(path.join(orphan, "README.md"), "# Orphan");
+
+    const results = uninstallSkills({
+      scope: "local",
+      targets: ["generic"],
+      sourcePath: SOURCE_SKILLS_DIR,
+      skills: ["orphan"],
+      cwd: TEST_DIR,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0].status).toBe("removed");
+    expect(fs.existsSync(orphan)).toBe(false);
   });
 
   it("should copy skills when scope is local", () => {

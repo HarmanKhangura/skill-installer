@@ -8,6 +8,11 @@ export interface SkillItem {
   hasSkillMd: boolean;
 }
 
+export interface InvalidInstalledSkill {
+  name: string;
+  target: TargetAgent;
+}
+
 export interface InstallOptions {
   scope?: Scope;
   targets?: TargetAgent[];

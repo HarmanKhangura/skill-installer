@@ -61,5 +61,34 @@ export function installSkills(options: InstallOptions): InstallResult[] {
 }
 
 export function uninstallSkills(options: InstallOptions): InstallResult[] {
-  return installSkills({ ...options, unlink: true });
+  const scope: Scope = options.scope || "local";
+  const targets: TargetAgent[] = options.targets && options.targets.length > 0
+    ? options.targets
+    : ["generic", "claude"];
+  const sourcePath = options.sourcePath || process.cwd();
+  const cwd = options.cwd || process.cwd();
+  const skillNames = options.skills && options.skills.length > 0
+    ? options.skills
+    : findSkills(sourcePath).map((skill) => skill.name);
+  const dryRun = options.dryRun ?? false;
+  const results: InstallResult[] = [];
+
+  for (const target of targets) {
+    const targetDir = getTargetDirectory(target, scope, cwd);
+
+    for (const skillName of skillNames) {
+      const linkPath = path.join(targetDir, skillName);
+      const result = removeSymlink(linkPath, { dryRun });
+      results.push({
+        skillName,
+        target,
+        targetDir,
+        linkPath,
+        status: result.status,
+        message: result.message,
+      });
+    }
+  }
+
+  return results;
 }

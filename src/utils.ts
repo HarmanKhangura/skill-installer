@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import type { Scope, TargetAgent, SkillItem } from "./types.js";
+import type { InvalidInstalledSkill, Scope, TargetAgent, SkillItem } from "./types.js";
 
 export function expandHome(filePath: string): string {
   if (filePath.startsWith("~") && (filePath.length === 1 || filePath[1] === "/" || filePath[1] === "\\")) {
@@ -26,10 +26,35 @@ export function findInstalledSkillNames(
     .filter((skill) =>
       targets.some((target) => {
         const skillPath = path.join(getTargetDirectory(target, scope, cwd), skill.name);
-        return fs.lstatSync(skillPath, { throwIfNoEntry: false }) !== undefined;
+        return fs.lstatSync(skillPath, { throwIfNoEntry: false }) !== undefined
+          && findSkillMarkdownFile(skillPath) !== null;
       })
     )
     .map((skill) => skill.name);
+}
+
+export function findInvalidInstalledSkills(
+  targets: TargetAgent[],
+  scope: Scope,
+  cwd: string = process.cwd()
+): InvalidInstalledSkill[] {
+  const invalidSkills: InvalidInstalledSkill[] = [];
+
+  for (const target of targets) {
+    const targetDirectory = getTargetDirectory(target, scope, cwd);
+    if (!fs.existsSync(targetDirectory)) continue;
+
+    for (const entry of fs.readdirSync(targetDirectory, { withFileTypes: true })) {
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+
+      const skillPath = path.join(targetDirectory, entry.name);
+      if (findSkillMarkdownFile(skillPath) === null) {
+        invalidSkills.push({ name: entry.name, target });
+      }
+    }
+  }
+
+  return invalidSkills;
 }
 
 export function getSkillChanges(

@@ -4,9 +4,15 @@ import pc from "picocolors";
 import path from "node:path";
 import fs from "node:fs";
 import { installSkills, uninstallSkills } from "./installer.js";
-import { findInstalledSkillNames, findSkills, expandHome, getSkillChanges } from "./utils.js";
+import {
+  findInstalledSkillNames,
+  findInvalidInstalledSkills,
+  findSkills,
+  expandHome,
+  getSkillChanges,
+} from "./utils.js";
 import { promptScope, promptTargets, promptSkills, promptSourceDirectory } from "./prompts.js";
-import type { Scope, TargetAgent } from "./types.js";
+import type { InvalidInstalledSkill, Scope, TargetAgent } from "./types.js";
 
 const program = new Command();
 
@@ -66,8 +72,11 @@ program
 
     const sourcePath = expandHome(sourcePathInput || process.cwd());
     const foundSkills = findSkills(sourcePath);
+    const invalidInstalledSkills = !nonInteractive && !options.unlink
+      ? findInvalidInstalledSkills(targets, scope)
+      : [];
 
-    if (foundSkills.length === 0) {
+    if (foundSkills.length === 0 && invalidInstalledSkills.length === 0) {
       p.log.warn(pc.yellow(`No skill folders found in source directory: ${path.resolve(sourcePath)}`));
       p.outro("Done");
       process.exit(0);
@@ -76,14 +85,17 @@ program
     let selectedSkillNames: string[] = [];
     let skillNamesToInstall: string[] = [];
     let skillNamesToUninstall: string[] = [];
+    let invalidSkillsToRemove: InvalidInstalledSkill[] = [];
     if (!nonInteractive && !options.unlink) {
       const installedSkillNames = findInstalledSkillNames(foundSkills, targets, scope);
-      selectedSkillNames = await promptSkills(foundSkills, installedSkillNames);
+      const selection = await promptSkills(foundSkills, installedSkillNames, invalidInstalledSkills);
+      selectedSkillNames = selection.selectedSkillNames;
+      invalidSkillsToRemove = selection.invalidSkillsToRemove;
       const changes = getSkillChanges(installedSkillNames, selectedSkillNames);
       skillNamesToInstall = changes.toInstall;
       skillNamesToUninstall = changes.toUninstall;
     } else if (foundSkills.length > 1 && !nonInteractive) {
-      selectedSkillNames = await promptSkills(foundSkills);
+      selectedSkillNames = (await promptSkills(foundSkills)).selectedSkillNames;
       skillNamesToInstall = selectedSkillNames;
     } else {
       selectedSkillNames = foundSkills.map((s) => s.name);
@@ -91,19 +103,31 @@ program
     }
 
     const verb = options.unlink ? "Unlinking" : scope === "local" ? "Copying" : "Symlinking";
-    const skillNamesForInstall = options.unlink ? selectedSkillNames : skillNamesToInstall;
-    const changeCount = skillNamesForInstall.length + skillNamesToUninstall.length;
+    const skillNamesForInstall = options.unlink ? [] : skillNamesToInstall;
+    const explicitSkillNamesToUninstall = options.unlink ? selectedSkillNames : [];
+    const changeCount = skillNamesForInstall.length
+      + skillNamesToUninstall.length
+      + invalidSkillsToRemove.length
+      + explicitSkillNamesToUninstall.length;
     if (changeCount > 0) {
       const changeSummary = options.unlink
-        ? `${verb} ${skillNamesForInstall.length} skill(s)`
-        : skillNamesToUninstall.length > 0
-          ? `Installing ${skillNamesToInstall.length} and removing ${skillNamesToUninstall.length} skill(s)`
+        ? `${verb} ${explicitSkillNamesToUninstall.length} skill(s)`
+        : skillNamesToUninstall.length + invalidSkillsToRemove.length > 0
+          ? `Installing ${skillNamesToInstall.length} and removing ${skillNamesToUninstall.length + invalidSkillsToRemove.length} skill(s)`
           : `${verb} ${skillNamesToInstall.length} skill(s)`;
       p.log.info(`${changeSummary} from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
     } else {
       p.log.info("No skill changes selected.");
     }
 
+    const invalidCleanupResults = invalidSkillsToRemove.flatMap((skill) =>
+      uninstallSkills({
+        scope,
+        targets: [skill.target],
+        skills: [skill.name],
+        dryRun: options.dryRun,
+      })
+    );
     const installResults = skillNamesForInstall.length > 0
       ? installSkills({
         scope,
@@ -111,7 +135,6 @@ program
         sourcePath,
         skills: skillNamesForInstall,
         force: options.force,
-        unlink: options.unlink,
         dryRun: options.dryRun,
       })
       : [];
@@ -124,7 +147,16 @@ program
         dryRun: options.dryRun,
       })
       : [];
-    const results = [...installResults, ...uninstallResults];
+    const explicitUnlinkResults = explicitSkillNamesToUninstall.length > 0
+      ? uninstallSkills({
+        scope,
+        targets,
+        sourcePath,
+        skills: explicitSkillNamesToUninstall,
+        dryRun: options.dryRun,
+      })
+      : [];
+    const results = [...invalidCleanupResults, ...uninstallResults, ...installResults, ...explicitUnlinkResults];
 
     let successCount = 0;
     let skipCount = 0;
