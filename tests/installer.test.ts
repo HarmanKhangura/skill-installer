@@ -38,7 +38,7 @@ describe("skill-installer utils & installer", () => {
     expect(localClaude).toBe(path.join(TEST_DIR, ".claude", "skills"));
   });
 
-  it("should install skills as symlinks into local .agents and .claude folders", () => {
+  it("should copy skills when scope is local", () => {
     const results = installSkills({
       scope: "local",
       targets: ["generic", "claude"],
@@ -55,8 +55,29 @@ describe("skill-installer utils & installer", () => {
     expect(fs.existsSync(agentSkillA)).toBe(true);
     expect(fs.existsSync(claudeSkillB)).toBe(true);
 
-    expect(fs.lstatSync(agentSkillA).isSymbolicLink()).toBe(true);
-    expect(fs.lstatSync(claudeSkillB).isSymbolicLink()).toBe(true);
+    // Local scope copies directory, so it should be a directory and NOT a symbolic link
+    expect(fs.lstatSync(agentSkillA).isDirectory()).toBe(true);
+    expect(fs.lstatSync(agentSkillA).isSymbolicLink()).toBe(false);
+    expect(fs.lstatSync(claudeSkillB).isDirectory()).toBe(true);
+    expect(fs.lstatSync(claudeSkillB).isSymbolicLink()).toBe(false);
+  });
+
+  it("should symlink skills when scope is global", () => {
+    const results = installSkills({
+      scope: "global",
+      targets: ["generic"],
+      sourcePath: SOURCE_SKILLS_DIR,
+      cwd: TEST_DIR,
+      force: true,
+    });
+
+    expect(results.every((r) => r.status === "created")).toBe(true);
+    for (const r of results) {
+      expect(fs.existsSync(r.linkPath)).toBe(true);
+      expect(fs.lstatSync(r.linkPath).isSymbolicLink()).toBe(true);
+      // Clean up test symlink from home directory
+      fs.rmSync(r.linkPath, { force: true, recursive: true });
+    }
   });
 
   it("should handle force overwrite of existing links", () => {

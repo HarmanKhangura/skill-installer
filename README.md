@@ -8,10 +8,9 @@ Works on Linux, macOS, and Windows.
 
 ## Features
 
-- 🔗 **Symlink-based Installation**: Quickly link local skills into `.agents/skills` and/or `.claude/skills` without duplicating files.
-- 🌐 **Global or Local Scope**:
-  - `--global` / `-g`: Installs to user home directory (`~/.agents/skills`, `~/.claude/skills`).
-  - `--local` / `-l`: Installs to workspace root directory (`./.agents/skills`, `./.claude/skills`).
+- 📋 **Local Copies & Global Symlinks**:
+  - `--local` / `-l`: Copies skill folders into local workspace directory (`./.agents/skills`, `./.claude/skills`).
+  - `--global` / `-g`: Symlinks skill folders to global home directory (`~/.agents/skills`, `~/.claude/skills`).
 - 🤖 **Target Selection**:
   - `--generic`: Install into `.agents` folder.
   - `--claude`: Install into `.claude` folder.

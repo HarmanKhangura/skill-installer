@@ -187,6 +187,51 @@ export function createSymlink(
   }
 }
 
+export function copyDirectory(
+  targetPath: string,
+  destPath: string,
+  options: { force?: boolean; dryRun?: boolean } = {}
+): { status: "created" | "updated" | "skipped" | "failed"; message?: string } {
+  const { force = false, dryRun = false } = options;
+  const resolvedTarget = path.resolve(targetPath);
+  const resolvedDest = path.resolve(destPath);
+
+  if (!fs.existsSync(resolvedTarget)) {
+    return { status: "failed", message: `Source path does not exist: ${resolvedTarget}` };
+  }
+
+  const parentDir = path.dirname(resolvedDest);
+
+  if (fs.existsSync(resolvedDest) || fs.lstatSync(resolvedDest, { throwIfNoEntry: false })) {
+    if (!force) {
+      return {
+        status: "skipped",
+        message: `Destination directory already exists. Use --force to overwrite.`,
+      };
+    }
+
+    if (!dryRun) {
+      try {
+        fs.rmSync(resolvedDest, { recursive: true, force: true });
+      } catch (err: any) {
+        return { status: "failed", message: `Failed to remove existing directory: ${err.message}` };
+      }
+    }
+  }
+
+  if (dryRun) {
+    return { status: "created", message: "[Dry-run] Would copy directory" };
+  }
+
+  try {
+    fs.mkdirSync(parentDir, { recursive: true });
+    fs.cpSync(resolvedTarget, resolvedDest, { recursive: true });
+    return { status: "created" };
+  } catch (err: any) {
+    return { status: "failed", message: `Copy error: ${err.message}` };
+  }
+}
+
 export function removeSymlink(
   linkPath: string,
   options: { dryRun?: boolean } = {}
@@ -196,17 +241,17 @@ export function removeSymlink(
 
   const lstat = fs.lstatSync(resolvedLink, { throwIfNoEntry: false });
   if (!lstat) {
-    return { status: "skipped", message: "Link does not exist" };
+    return { status: "skipped", message: "Path does not exist" };
   }
 
   if (dryRun) {
-    return { status: "removed", message: "[Dry-run] Would remove symlink" };
+    return { status: "removed", message: "[Dry-run] Would remove item" };
   }
 
   try {
     fs.rmSync(resolvedLink, { recursive: true, force: true });
     return { status: "removed" };
   } catch (err: any) {
-    return { status: "failed", message: `Failed to remove link: ${err.message}` };
+    return { status: "failed", message: `Failed to remove path: ${err.message}` };
   }
 }

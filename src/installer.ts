@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { InstallOptions, InstallResult, TargetAgent, Scope } from "./types.js";
-import { findSkills, getTargetDirectory, createSymlink, removeSymlink } from "./utils.js";
+import { findSkills, getTargetDirectory, createSymlink, copyDirectory, removeSymlink } from "./utils.js";
 
 export function installSkills(options: InstallOptions): InstallResult[] {
   const scope: Scope = options.scope || "local";
@@ -28,25 +28,28 @@ export function installSkills(options: InstallOptions): InstallResult[] {
     const targetDir = getTargetDirectory(target, scope, cwd);
 
     for (const skill of selectedSkills) {
-      const linkPath = path.join(targetDir, skill.name);
+      const destPath = path.join(targetDir, skill.name);
 
       if (options.unlink) {
-        const res = removeSymlink(linkPath, { dryRun });
+        const res = removeSymlink(destPath, { dryRun });
         results.push({
           skillName: skill.name,
           target,
           targetDir,
-          linkPath,
+          linkPath: destPath,
           status: res.status,
           message: res.message,
         });
       } else {
-        const res = createSymlink(skill.path, linkPath, { force, dryRun });
+        const res = scope === "local"
+          ? copyDirectory(skill.path, destPath, { force, dryRun })
+          : createSymlink(skill.path, destPath, { force, dryRun });
+
         results.push({
           skillName: skill.name,
           target,
           targetDir,
-          linkPath,
+          linkPath: destPath,
           status: res.status,
           message: res.message,
         });

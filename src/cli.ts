@@ -80,8 +80,8 @@ program
       selectedSkillNames = foundSkills.map((s) => s.name);
     }
 
-    const actionText = options.unlink ? "Unlinking" : "Installing";
-    p.log.info(`${actionText} ${selectedSkillNames.length} skill(s) from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
+    const verb = options.unlink ? "Unlinking" : scope === "local" ? "Copying" : "Symlinking";
+    p.log.info(`${verb} ${selectedSkillNames.length} skill(s) from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
 
     const results = installSkills({
       scope,

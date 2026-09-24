@@ -10,8 +10,8 @@ export async function promptScope(initialScope?: Scope): Promise<Scope> {
   const choice = await p.select<Scope>({
     message: "Select installation scope:",
     options: [
-      { value: "local", label: "Local workspace", hint: "./.agents/skills or ./.claude/skills" },
-      { value: "global", label: "Global user directory", hint: "~/.agents/skills or ~/.claude/skills" },
+      { value: "local", label: "Local workspace", hint: "Copies skills to ./.agents/skills or ./.claude/skills" },
+      { value: "global", label: "Global user directory", hint: "Symlinks skills to ~/.agents/skills or ~/.claude/skills" },
     ],
   });
 
