@@ -1,6 +1,6 @@
 {
   "name": "skill-installer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "CLI tool to install and symlink AI agent skills to .agents and .claude directories (globally or locally).",
   "main": "dist/index.js",
   "type": "module",
