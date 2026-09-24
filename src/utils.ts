@@ -16,6 +16,22 @@ export function getTargetDirectory(target: TargetAgent, scope: Scope, cwd: strin
   return path.join(baseDir, folderName, "skills");
 }
 
+export function findInstalledSkillNames(
+  skills: SkillItem[],
+  targets: TargetAgent[],
+  scope: Scope,
+  cwd: string = process.cwd()
+): string[] {
+  return skills
+    .filter((skill) =>
+      targets.some((target) => {
+        const skillPath = path.join(getTargetDirectory(target, scope, cwd), skill.name);
+        return fs.lstatSync(skillPath, { throwIfNoEntry: false }) !== undefined;
+      })
+    )
+    .map((skill) => skill.name);
+}
+
 export function findSkillMarkdownFile(dirPath: string): string | null {
   try {
     const entries = fs.readdirSync(dirPath);

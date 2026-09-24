@@ -43,19 +43,22 @@ export async function promptTargets(initialTargets?: TargetAgent[]): Promise<Tar
   return choices;
 }
 
-export async function promptSkills(foundSkills: SkillItem[]): Promise<string[]> {
-  if (foundSkills.length <= 1) {
-    return foundSkills.map((s) => s.name);
-  }
-
+export async function promptSkills(
+  foundSkills: SkillItem[],
+  initiallySelected: string[] = []
+): Promise<string[]> {
   const choices = await p.multiselect<string>({
-    message: "Select skills to link:",
+    message: "Select skills to install or keep (uncheck installed skills to remove them):",
     options: foundSkills.map((s) => ({
       value: s.name,
       label: s.name,
-      hint: s.hasSkillMd ? "valid skill (SKILL.md present)" : "folder",
+      hint: initiallySelected.includes(s.name)
+        ? "installed"
+        : s.hasSkillMd
+          ? "valid skill (SKILL.md present)"
+          : "folder",
     })),
-    required: true,
+    initialValues: initiallySelected,
   });
 
   if (p.isCancel(choices)) {
@@ -91,4 +94,3 @@ export async function promptSourceDirectory(initialSource?: string): Promise<str
 
   return value ? value.trim() : ".";
 }
-

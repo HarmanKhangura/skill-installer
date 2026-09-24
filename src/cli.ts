@@ -3,8 +3,8 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import path from "node:path";
 import fs from "node:fs";
-import { installSkills } from "./installer.js";
-import { findSkills, expandHome } from "./utils.js";
+import { installSkills, uninstallSkills } from "./installer.js";
+import { findInstalledSkillNames, findSkills, expandHome } from "./utils.js";
 import { promptScope, promptTargets, promptSkills, promptSourceDirectory } from "./prompts.js";
 import type { Scope, TargetAgent } from "./types.js";
 
@@ -74,24 +74,44 @@ program
     }
 
     let selectedSkillNames: string[] = [];
-    if (foundSkills.length > 1 && !nonInteractive) {
+    let skillNamesToUninstall: string[] = [];
+    if (!nonInteractive && !options.unlink) {
+      const installedSkillNames = findInstalledSkillNames(foundSkills, targets, scope);
+      selectedSkillNames = await promptSkills(foundSkills, installedSkillNames);
+      skillNamesToUninstall = installedSkillNames.filter((name) => !selectedSkillNames.includes(name));
+    } else if (foundSkills.length > 1 && !nonInteractive) {
       selectedSkillNames = await promptSkills(foundSkills);
     } else {
       selectedSkillNames = foundSkills.map((s) => s.name);
     }
 
     const verb = options.unlink ? "Unlinking" : scope === "local" ? "Copying" : "Symlinking";
-    p.log.info(`${verb} ${selectedSkillNames.length} skill(s) from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
+    const changeSummary = skillNamesToUninstall.length > 0
+      ? `Reconciling ${selectedSkillNames.length} selected and ${skillNamesToUninstall.length} removed skill(s)`
+      : `${verb} ${selectedSkillNames.length} skill(s)`;
+    p.log.info(`${changeSummary} from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
 
-    const results = installSkills({
-      scope,
-      targets,
-      sourcePath,
-      skills: selectedSkillNames,
-      force: options.force,
-      unlink: options.unlink,
-      dryRun: options.dryRun,
-    });
+    const installResults = selectedSkillNames.length > 0
+      ? installSkills({
+        scope,
+        targets,
+        sourcePath,
+        skills: selectedSkillNames,
+        force: options.force,
+        unlink: options.unlink,
+        dryRun: options.dryRun,
+      })
+      : [];
+    const uninstallResults = skillNamesToUninstall.length > 0
+      ? uninstallSkills({
+        scope,
+        targets,
+        sourcePath,
+        skills: skillNamesToUninstall,
+        dryRun: options.dryRun,
+      })
+      : [];
+    const results = [...installResults, ...uninstallResults];
 
     let successCount = 0;
     let skipCount = 0;
@@ -103,7 +123,7 @@ program
 
       if (res.status === "created" || res.status === "updated" || res.status === "removed") {
         successCount++;
-        const icon = options.unlink ? "🗑" : "✔";
+        const icon = res.status === "removed" ? "🗑" : "✔";
         p.log.success(`${icon} ${targetLabel} ${skillLabel} ➜ ${res.linkPath}`);
       } else if (res.status === "skipped") {
         skipCount++;
