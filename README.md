@@ -29,7 +29,7 @@ Bash:
 
 ```bash
 curl --fail --location --remote-name \
-  https://raw.githubusercontent.com/HarmanKhangura/skill-installer/main/scripts/install.sh
+  https://raw.githubusercontent.com/HarmanKhangura/skill-installer/master/scripts/install.sh
 bash install.sh
 rm install.sh
 ```
@@ -38,7 +38,7 @@ PowerShell:
 
 ```powershell
 Invoke-WebRequest `
-  https://raw.githubusercontent.com/HarmanKhangura/skill-installer/main/scripts/install.ps1 `
+  https://raw.githubusercontent.com/HarmanKhangura/skill-installer/master/scripts/install.ps1 `
   -OutFile install.ps1
 .\install.ps1
 Remove-Item install.ps1
