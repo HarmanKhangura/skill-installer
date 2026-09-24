@@ -1,0 +1,42 @@
+{
+  "name": "skill-installer",
+  "version": "1.0.0",
+  "description": "CLI tool to install and symlink AI agent skills to .agents and .claude directories (globally or locally).",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "skill-installer": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "lint": "tsc --noEmit",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "skills",
+    "agent-skills",
+    "claude-skills",
+    "symlink",
+    "installer",
+    "cli"
+  ],
+  "author": "Harman Khangura",
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^0.9.1",
+    "commander": "^13.1.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsup": "^8.3.6",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}
