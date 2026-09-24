@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate and build
+        run: |
+          npm test
+          npm run lint
+          npm run build
+
+      - name: Verify release version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(node -e "console.log(JSON.parse(require('node:fs').readFileSync('package.json', 'utf8')).version)")"
+          test "v$version" = "$TAG"
+
+      - name: Package release assets
+        run: |
+          mkdir release
+          npm pack --pack-destination release --ignore-scripts
+          mv release/skill-installer-*.tgz release/skill-installer.tgz
+          sha256sum release/skill-installer.tgz > release/skill-installer.tgz.sha256
+          cp scripts/install.sh release/install.sh
+          cp scripts/install.ps1 release/install.ps1
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            release/skill-installer.tgz \
+            release/skill-installer.tgz.sha256 \
+            release/install.sh \
+            release/install.ps1 \
+            --title "$TAG" \
+            --generate-notes

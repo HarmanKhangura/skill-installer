@@ -23,6 +23,29 @@ Works on Linux, macOS, and Windows.
 
 ## Installation
 
+### Install the latest GitHub Release
+
+Bash:
+
+```bash
+curl --fail --location --remote-name \
+  https://github.com/HarmanKhangura/skill-installer/releases/latest/download/install.sh
+bash install.sh
+rm install.sh
+```
+
+PowerShell:
+
+```powershell
+Invoke-WebRequest `
+  https://github.com/HarmanKhangura/skill-installer/releases/latest/download/install.ps1 `
+  -OutFile install.ps1
+.\install.ps1
+Remove-Item install.ps1
+```
+
+Both scripts verify the release archive's SHA-256 checksum before installing it globally. To install a specific release, append its tag (for example, `bash install.sh v1.0.0` or `.\install.ps1 -Version v1.0.0`).
+
 ### Run from GitHub with `npx`
 ```bash
 npx --yes --allow-git=all github:HarmanKhangura/skill-installer
