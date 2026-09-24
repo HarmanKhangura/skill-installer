@@ -123,4 +123,23 @@ describe("skill-installer utils & installer", () => {
     expect(results[0].skillName).toBe("custom-skill");
     expect(fs.existsSync(path.join(TEST_DIR, ".agents", "skills", "custom-skill"))).toBe(true);
   });
+
+  it("should only return parent folders of SKILL.md / SKILLS.md files and ignore non-skill folders", () => {
+    const rootDir = path.join(TEST_DIR, "nested-skills-test");
+    // Valid skill with SKILLS.md (plural)
+    fs.mkdirSync(path.join(rootDir, "category-a", "plural-skill"), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, "category-a", "plural-skill", "SKILLS.md"), "# Plural Skill");
+
+    // Valid skill with SKILL.md (singular)
+    fs.mkdirSync(path.join(rootDir, "category-b", "singular-skill"), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, "category-b", "singular-skill", "SKILL.md"), "# Singular Skill");
+
+    // Regular folder WITHOUT any skill markdown file
+    fs.mkdirSync(path.join(rootDir, "regular-folder"), { recursive: true });
+    fs.writeFileSync(path.join(rootDir, "regular-folder", "README.md"), "# Not a skill");
+
+    const skills = findSkills(rootDir);
+    expect(skills.length).toBe(2);
+    expect(skills.map((s) => s.name).sort()).toEqual(["plural-skill", "singular-skill"]);
+  });
 });

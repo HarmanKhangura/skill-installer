@@ -16,7 +16,25 @@ export function getTargetDirectory(target: TargetAgent, scope: Scope, cwd: strin
   return path.join(baseDir, folderName, "skills");
 }
 
-export function findSkills(sourcePath: string = process.cwd()): SkillItem[] {
+export function findSkillMarkdownFile(dirPath: string): string | null {
+  try {
+    const entries = fs.readdirSync(dirPath);
+    for (const entry of entries) {
+      const lower = entry.toLowerCase();
+      if (lower === "skill.md" || lower === "skills.md") {
+        const fullPath = path.join(dirPath, entry);
+        if (fs.statSync(fullPath).isFile()) {
+          return fullPath;
+        }
+      }
+    }
+  } catch {
+    // Ignore read errors
+  }
+  return null;
+}
+
+export function findSkills(sourcePath: string = process.cwd(), maxDepth: number = 4): SkillItem[] {
   const absoluteSource = path.resolve(expandHome(sourcePath));
   if (!fs.existsSync(absoluteSource)) {
     return [];
@@ -27,48 +45,78 @@ export function findSkills(sourcePath: string = process.cwd()): SkillItem[] {
     return [];
   }
 
-  // Check if current directory is itself a single skill containing SKILL.md
-  const skillMdInCurrent = path.join(absoluteSource, "SKILL.md");
-  if (fs.existsSync(skillMdInCurrent)) {
-    return [
-      {
-        name: path.basename(absoluteSource),
-        path: absoluteSource,
-        hasSkillMd: true,
-      },
-    ];
-  }
-
-  // Check if a `skills` subfolder exists
-  const skillsSubdir = path.join(absoluteSource, "skills");
-  const searchDir = fs.existsSync(skillsSubdir) && fs.statSync(skillsSubdir).isDirectory()
-    ? skillsSubdir
-    : absoluteSource;
-
-  const entries = fs.readdirSync(searchDir, { withFileTypes: true });
   const skills: SkillItem[] = [];
+  const visitedDirs = new Set<string>();
 
-  for (const entry of entries) {
-    if (entry.name.startsWith(".")) continue;
-
-    const fullPath = path.join(searchDir, entry.name);
-    // Follow symlinks if entry is a symlink to directory
-    let isDir = entry.isDirectory();
-    if (!isDir && entry.isSymbolicLink()) {
-      try {
-        isDir = fs.statSync(fullPath).isDirectory();
-      } catch {
-        isDir = false;
-      }
+  function search(dir: string, currentDepth: number) {
+    let realPath = dir;
+    try {
+      realPath = fs.realpathSync(dir);
+    } catch {
+      // Fallback if realpath fails
     }
 
-    if (isDir) {
-      const hasSkillMd = fs.existsSync(path.join(fullPath, "SKILL.md"));
+    if (visitedDirs.has(realPath)) return;
+    visitedDirs.add(realPath);
+
+    const skillFile = findSkillMarkdownFile(dir);
+    if (skillFile) {
       skills.push({
-        name: entry.name,
-        path: fullPath,
-        hasSkillMd,
+        name: path.basename(dir),
+        path: dir,
+        hasSkillMd: true,
       });
+      // Do not recurse further inside a skill directory
+      return;
+    }
+
+    if (currentDepth >= maxDepth) return;
+
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (
+          entry.name.startsWith(".") ||
+          entry.name === "node_modules" ||
+          entry.name === "dist" ||
+          entry.name === "build"
+        ) {
+          continue;
+        }
+
+        const fullPath = path.join(dir, entry.name);
+        let isDir = entry.isDirectory();
+        if (!isDir && entry.isSymbolicLink()) {
+          try {
+            isDir = fs.statSync(fullPath).isDirectory();
+          } catch {
+            isDir = false;
+          }
+        }
+
+        if (isDir) {
+          search(fullPath, currentDepth + 1);
+        }
+      }
+    } catch {
+      // Ignore permission or read errors
+    }
+  }
+
+  search(absoluteSource, 0);
+
+  // Disambiguate duplicate skill folder names if any
+  const nameCounts = new Map<string, number>();
+  for (const s of skills) {
+    nameCounts.set(s.name, (nameCounts.get(s.name) || 0) + 1);
+  }
+
+  if (Array.from(nameCounts.values()).some((count) => count > 1)) {
+    for (const s of skills) {
+      if ((nameCounts.get(s.name) || 0) > 1) {
+        const parentName = path.basename(path.dirname(s.path));
+        s.name = `${parentName}/${s.name}`;
+      }
     }
   }
 
