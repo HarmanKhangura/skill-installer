@@ -9,12 +9,25 @@ if ! command -v npm >/dev/null 2>&1; then
   exit 1
 fi
 
-if [[ "$version" == "latest" ]]; then
-  download_base="https://github.com/$repository/releases/latest/download"
-else
-  download_base="https://github.com/$repository/releases/download/$version"
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is required to download the GitHub Release." >&2
+  exit 1
 fi
 
+if [[ "$version" == "latest" ]]; then
+  version="$(
+    curl --fail --location --silent --show-error \
+      "https://api.github.com/repos/$repository/releases/latest" |
+      sed -nE 's/.*"tag_name"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p'
+  )"
+fi
+
+if [[ -z "$version" ]]; then
+  echo "Could not determine the latest release tag." >&2
+  exit 1
+fi
+
+download_base="https://github.com/$repository/releases/download/$version"
 archive="$(mktemp "${TMPDIR:-/tmp}/skill-installer.XXXXXX.tgz")"
 checksum_file="$(mktemp "${TMPDIR:-/tmp}/skill-installer.XXXXXX.sha256")"
 

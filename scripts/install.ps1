@@ -10,12 +10,10 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
 }
 
 if ($Version -eq "latest") {
-    $downloadBase = "https://github.com/$repository/releases/latest/download"
-}
-else {
-    $downloadBase = "https://github.com/$repository/releases/download/$Version"
+    $Version = (Invoke-RestMethod -Uri "https://api.github.com/repos/$repository/releases/latest").tag_name
 }
 
+$downloadBase = "https://github.com/$repository/releases/download/$Version"
 $archive = Join-Path ([System.IO.Path]::GetTempPath()) "skill-installer-$([System.Guid]::NewGuid()).tgz"
 $checksumFile = "$archive.sha256"
 

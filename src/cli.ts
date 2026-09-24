@@ -15,11 +15,14 @@ import { promptScope, promptTargets, promptSkills, promptSourceDirectory } from 
 import type { InvalidInstalledSkill, Scope, TargetAgent } from "./types.js";
 
 const program = new Command();
+const { version: packageVersion }: { version: string } = JSON.parse(
+  fs.readFileSync(new URL("../package.json", import.meta.url), "utf8")
+);
 
 program
   .name("skill-installer")
   .description("CLI tool to install skills into .agents and/or .claude folders via symbolic links")
-  .version("1.0.0")
+  .version(packageVersion)
   .option("-g, --global", "Install skills to global home directory (~/.agents/skills or ~/.claude/skills)")
   .option("-l, --local", "Install skills to local workspace directory (./.agents/skills or ./.claude/skills)")
   .option("--generic", "Install skills into .agents folder")
