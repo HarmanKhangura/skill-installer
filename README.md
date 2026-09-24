@@ -23,15 +23,20 @@ Works on Linux, macOS, and Windows.
 
 ## Installation
 
-### Run directly with `npx`
+### Run from GitHub with `npx`
 ```bash
-npx skill-installer
+npx --yes github:HarmanKhangura/skill-installer
 ```
 
-### Or install globally via `npm`
+### Clone and link globally
 ```bash
-npm install -g skill-installer
+git clone https://github.com/HarmanKhangura/skill-installer.git
+cd skill-installer
+npm install
+npm link
 ```
+
+After linking, run `skill-installer` from any directory. The global command remains linked to this clone, so pull changes and rerun `npm install` when you want to update it.
 
 ---
 
