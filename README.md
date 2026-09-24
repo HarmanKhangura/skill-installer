@@ -25,8 +25,10 @@ Works on Linux, macOS, and Windows.
 
 ### Run from GitHub with `npx`
 ```bash
-npx --yes github:HarmanKhangura/skill-installer
+npx --yes --allow-git=all github:HarmanKhangura/skill-installer
 ```
+
+npm 12 disables fetching Git-based packages by default. The `--allow-git=all` option permits Git package fetching for this command; use it only with trusted sources.
 
 ### Clone and link globally
 ```bash
