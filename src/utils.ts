@@ -32,6 +32,19 @@ export function findInstalledSkillNames(
     .map((skill) => skill.name);
 }
 
+export function getSkillChanges(
+  installedSkillNames: string[],
+  selectedSkillNames: string[]
+): { toInstall: string[]; toUninstall: string[] } {
+  const selected = new Set(selectedSkillNames);
+  const installed = new Set(installedSkillNames);
+
+  return {
+    toInstall: selectedSkillNames.filter((name) => !installed.has(name)),
+    toUninstall: installedSkillNames.filter((name) => !selected.has(name)),
+  };
+}
+
 export function findSkillMarkdownFile(dirPath: string): string | null {
   try {
     const entries = fs.readdirSync(dirPath);

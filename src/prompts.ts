@@ -59,6 +59,7 @@ export async function promptSkills(
           : "folder",
     })),
     initialValues: initiallySelected,
+    required: false,
   });
 
   if (p.isCancel(choices)) {

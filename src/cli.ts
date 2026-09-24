@@ -4,7 +4,7 @@ import pc from "picocolors";
 import path from "node:path";
 import fs from "node:fs";
 import { installSkills, uninstallSkills } from "./installer.js";
-import { findInstalledSkillNames, findSkills, expandHome } from "./utils.js";
+import { findInstalledSkillNames, findSkills, expandHome, getSkillChanges } from "./utils.js";
 import { promptScope, promptTargets, promptSkills, promptSourceDirectory } from "./prompts.js";
 import type { Scope, TargetAgent } from "./types.js";
 
@@ -74,29 +74,42 @@ program
     }
 
     let selectedSkillNames: string[] = [];
+    let skillNamesToInstall: string[] = [];
     let skillNamesToUninstall: string[] = [];
     if (!nonInteractive && !options.unlink) {
       const installedSkillNames = findInstalledSkillNames(foundSkills, targets, scope);
       selectedSkillNames = await promptSkills(foundSkills, installedSkillNames);
-      skillNamesToUninstall = installedSkillNames.filter((name) => !selectedSkillNames.includes(name));
+      const changes = getSkillChanges(installedSkillNames, selectedSkillNames);
+      skillNamesToInstall = changes.toInstall;
+      skillNamesToUninstall = changes.toUninstall;
     } else if (foundSkills.length > 1 && !nonInteractive) {
       selectedSkillNames = await promptSkills(foundSkills);
+      skillNamesToInstall = selectedSkillNames;
     } else {
       selectedSkillNames = foundSkills.map((s) => s.name);
+      skillNamesToInstall = selectedSkillNames;
     }
 
     const verb = options.unlink ? "Unlinking" : scope === "local" ? "Copying" : "Symlinking";
-    const changeSummary = skillNamesToUninstall.length > 0
-      ? `Reconciling ${selectedSkillNames.length} selected and ${skillNamesToUninstall.length} removed skill(s)`
-      : `${verb} ${selectedSkillNames.length} skill(s)`;
-    p.log.info(`${changeSummary} from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
+    const skillNamesForInstall = options.unlink ? selectedSkillNames : skillNamesToInstall;
+    const changeCount = skillNamesForInstall.length + skillNamesToUninstall.length;
+    if (changeCount > 0) {
+      const changeSummary = options.unlink
+        ? `${verb} ${skillNamesForInstall.length} skill(s)`
+        : skillNamesToUninstall.length > 0
+          ? `Installing ${skillNamesToInstall.length} and removing ${skillNamesToUninstall.length} skill(s)`
+          : `${verb} ${skillNamesToInstall.length} skill(s)`;
+      p.log.info(`${changeSummary} from [${pc.bold(path.resolve(sourcePath))}] into scope [${pc.bold(scope)}] for targets [${targets.join(", ")}]...`);
+    } else {
+      p.log.info("No skill changes selected.");
+    }
 
-    const installResults = selectedSkillNames.length > 0
+    const installResults = skillNamesForInstall.length > 0
       ? installSkills({
         scope,
         targets,
         sourcePath,
-        skills: selectedSkillNames,
+        skills: skillNamesForInstall,
         force: options.force,
         unlink: options.unlink,
         dryRun: options.dryRun,

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { installSkills, uninstallSkills } from "../src/installer.js";
-import { findInstalledSkillNames, findSkills, getTargetDirectory } from "../src/utils.js";
+import { findInstalledSkillNames, findSkills, getSkillChanges, getTargetDirectory } from "../src/utils.js";
 
 const TEST_DIR = path.join(os.tmpdir(), "skill-installer-tests-" + Date.now());
 const SOURCE_SKILLS_DIR = path.join(TEST_DIR, "my-skills");
@@ -55,6 +55,13 @@ describe("skill-installer utils & installer", () => {
     );
 
     expect(installedSkills).toEqual(["skill-a"]);
+  });
+
+  it("should only include changed skills for interactive reconciliation", () => {
+    expect(getSkillChanges(["skill-a", "skill-b"], ["skill-a", "skill-c"])).toEqual({
+      toInstall: ["skill-c"],
+      toUninstall: ["skill-b"],
+    });
   });
 
   it("should copy skills when scope is local", () => {
